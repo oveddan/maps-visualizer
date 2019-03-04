@@ -21,7 +21,7 @@
     "experimentalDecorators": true
   },
   "files": [
-    "./index.ts"
+    "./server/index.ts",
   ],
   "include": [
     "src/"
