@@ -23,10 +23,11 @@
     "downlevelIteration": true
   },
   "files": [
-    "./server/index.ts",
+    "./extractor/*.ts",
   ],
   "include": [
     "src/",
+    "extractor/"
   ],
   "exclude": [
     "node_modules/",

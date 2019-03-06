@@ -1,5 +1,13 @@
 export const mapsDataFile = './data/Maps.2014.part01.xml'
 
+export type AggregateRecord = {
+  leader: string,
+  recordNumber: Number,
+  year: string,
+  scale: number,
+  category: string
+};
+
 export type SubField = {
   '$name': string,
   '$text': string,

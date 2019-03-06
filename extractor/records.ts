@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 
 import {getAndParseScale, getAndParseSize, getAndParseYear, getSubFieldFromRecord} from './parsing'
-import {mapsDataFile, MarcRecord, SubField} from './types';
+import {AggregateRecord, mapsDataFile, MarcRecord, SubField} from './types';
 
 const XmlStream = require('xml-stream');
 
@@ -18,13 +18,6 @@ function buildRecordParsingStream() {
   return xml;
 }
 
-type AggregateRecord = {
-  leader: string,
-  recordNumber: Number,
-  year: string,
-  scale: number
-};
-
 const aggregatePath = './aggregate.json';
 
 export async function getAndAggregateData() {
@@ -40,12 +33,20 @@ export async function getAndAggregateData() {
     try {
       const year = getAndParseYear(record);
       const scale = getAndParseScale(record);
+      const category = getSubFieldFromRecord('650', 'a', record);
 
 
-      if (scale && year) {
+      // console.log(getSubFieldFromRecord('650', 'a', record));
+
+      if (scale && year && category) {
         validRecords++;
-        records.push(
-            {recordNumber, leader: record.leader, scale: Number(scale), year});
+        records.push({
+          recordNumber,
+          leader: record.leader,
+          scale: Number(scale),
+          year,
+          category
+        });
       } else if (year || scale) {
         // const yearString = getSubFieldFromRecord('260', 'c', record);
         // const sizeString = getSubFieldFromRecord('034', 'b', record);

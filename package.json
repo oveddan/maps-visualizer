@@ -4,9 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
-    "watch-client": "NODE_ENV=development parcel src/index.html --open "
+    "watch-extractor": "tsc -w",
+    "start": "NODE_ENV=development parcel src/index.html --open"
   },
   "author": "",
   "license": "ISC",
@@ -18,6 +17,7 @@
     "clang-format": "^1.2.4",
     "commander": "^2.19.0",
     "d3": "5",
+    "d3-hexbin": "^0.2.2",
     "fast-xml-parser": "^3.12.13",
     "parcel": "^1.11.0",
     "react": "^16.8.3",
@@ -30,6 +30,7 @@
   "devDependencies": {
     "@types/axios": "^0.14.0",
     "@types/d3": "^5.7.1",
+    "@types/d3-hexbin": "^0.2.3",
     "@types/react": "^16.8.6",
     "@types/react-dom": "^16.8.2",
     "@types/recharts": "^1.1.13"
