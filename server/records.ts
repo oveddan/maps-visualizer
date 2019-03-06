@@ -1,126 +1,176 @@
 import * as fs from 'fs';
-import {open} from 'inspector';
 
+import {getAndParseScale, getAndParseSize, getAndParseYear, getSubFieldFromRecord} from './parsing'
 import {mapsDataFile, MarcRecord, SubField} from './types';
 
 const XmlStream = require('xml-stream');
 
-export async function parseRecords() {
-  console.log('opening file');
-
+function buildRecordParsingStream() {
   const stream = fs.createReadStream(mapsDataFile);
 
-  console.log('creating stream');
+  console.log('creating readable stream');
 
   const xml = new XmlStream(stream);
   xml.collect('item');
   xml.collect('datafield');
   xml.collect('datafield > subfield');
 
-  console.log('waiting for element');
+  return xml;
+}
 
-  console.log('getting tags');
+type AggregateRecord = {
+  leader: string,
+  recordNumber: Number,
+  year: string,
+  scale: number
+};
+
+const aggregatePath = './aggregate.json';
+
+export async function getAndAggregateData() {
+  const records: AggregateRecord[] = [];
 
   let recordNumber = 0;
 
-  // 245-a has title
-  // 260-c has publish year
-  // 260-a has publish city
-  // 650-a has category
-  // 255-a has scale
-  // 034-b has scale
+  const xml = buildRecordParsingStream();
 
-  const yearCounts = new Map<string, number>();
+  let validRecords = 0;
 
   xml.on('updateElement: record', function(record: MarcRecord) {
     try {
-      record.datafield.forEach(dataField => {
-        const tag = dataField.$.tag;
+      const year = getAndParseYear(record);
+      const scale = getAndParseScale(record);
 
-        if (tag === '260') {
-          const yearString = getSubfield(dataField.subfield, 'c');
-          if (yearString) {
-            const approxYear = parseYear(yearString);  //, yearString);
-            // printSubfield(dataField.subfield, 'b');
 
-            const year = approximateToMiddleYear(approxYear);
-
-            if (!isFourDigits(year)) {
-              console.log('not four digits', year, yearString);
-            } else {
-              if (yearCounts.has(year)) {
-                yearCounts.set(year, yearCounts.get(year) + 1);
-              } else {
-                yearCounts.set(year, 1);
-              }
-            }
-          }
-        }
-
-        //   if (tagCounts.has(tag)) {
-        //     tagCounts.set(tag, tagCounts.get(tag) + 1);
-        //   } else {
-        //     tagCounts.set(tag, 0);
-        //   }
-      });
+      if (scale && year) {
+        validRecords++;
+        records.push(
+            {recordNumber, leader: record.leader, scale: Number(scale), year});
+      } else if (year || scale) {
+        // const yearString = getSubFieldFromRecord('260', 'c', record);
+        // const sizeString = getSubFieldFromRecord('034', 'b', record);
+        // console.log(yearString, sizeString);
+        // console.log(require('util').inspect(dataField, {depth: null}));
+      }
 
       recordNumber++;
 
+      // save every 500 records
       if (recordNumber % 500 === 0) {
-        console.log('parsed record', recordNumber);
-        saveData(yearCounts);
-        // saveTagCounts(tagCounts);
+        console.log(`parsed record ${validRecords} of ${recordNumber}`);
+        saveObject(aggregatePath, records);
       }
-
     } catch (e) {
       console.error(e);
     }
   });
 
   xml.on('end', function() {
-    console.log('ended');
+    console.log('ended...saving');
 
-    // saveTagCounts(tagCounts);
+    saveObject(aggregatePath, records);
   })
 }
 
-function stripC(yearString: string) {
-  if (yearString.startsWith('c')) {
-    // console.log('stripping', yearString, yearString.substr(1, 4));
-    return yearString.substr(1, 4);
-  } else
-    return yearString.substr(0, 4);
+
+export async function getAndSaveDataCounts(
+    {getAndSaveYear, getAndSaveScale, getAndScaleSize}: {
+      getAndSaveYear?: boolean,
+      getAndSaveScale?: boolean,
+      getAndScaleSize?: boolean
+    }) {
+  let recordNumber = 0;
+
+  const yearCounts = new Map<string, number>();
+  const scaleCounts = new Map<string, number>();
+
+  const xml = buildRecordParsingStream();
+
+  xml.on('updateElement: record', function(record: MarcRecord) {
+    try {
+      if (getAndScaleSize) {
+        const size = getAndParseSize(record);
+
+        // const scale = getAndParseScale(dataField);
+
+        // if (size || scale) {
+        //   console.log(record.leader);
+        //   console.log(size, scale);
+        // }
+      }
+
+      if (getAndSaveYear) {
+        const year = getAndParseYear(record);
+        if (year) {
+          addCount(yearCounts, year);
+        }
+      }
+
+      if (getAndSaveScale) {
+        const scale = getAndParseScale(record);
+
+        if (scale) {
+          addCount(scaleCounts, String(scale));
+        }
+      }
+
+
+      recordNumber++;
+
+      // save every 500 records
+      if (recordNumber % 500 === 0) {
+        if (getAndSaveYear) {
+          saveCounts(yearCountsPath, yearCounts);
+        }
+        if (getAndSaveScale) {
+          saveCounts(scaleCountsPath, scaleCounts);
+        }
+
+        console.log('processed record ', recordNumber);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  xml.on('end', function() {
+    console.log('ended...saving');
+
+    if (getAndSaveYear) {
+      saveCounts(yearCountsPath, yearCounts);
+    }
+    if (getAndSaveScale) {
+      saveCounts(scaleCountsPath, scaleCounts);
+    }
+  })
 }
 
-function parseYear(yearString: string) {
-  if (yearString.indexOf('[') >= 0) {
-    const openBracketLocation = yearString.indexOf('[');
-    const withoutBrackets = yearString.substr(
-        openBracketLocation + 1, yearString.length - openBracketLocation);
-
-    // return withoutBrackets;
-
-    return stripC(withoutBrackets);
+function addCount(map: Map<string, number>, key: string) {
+  if (map.has(key)) {
+    map.set(key, map.get(key) + 1);
   } else {
-    return stripC(yearString);
+    map.set(key, 1);
   }
-  // const withoutBrackets = yearString.replace('[', '').replace(']', '');
-  // return withoutBrackets;
 }
 
 const yearCountsPath = './years.json';
+const scaleCountsPath = './scales.json';
 
-async function saveData(yearCounts: Map<string, number>) {
-  // console.log(toObject(yearCounts));
-  const asObject = toObject(yearCounts);
-
-  await fs.promises.writeFile(yearCountsPath, JSON.stringify(asObject));
+async function saveObject(fileName: string, object: Object) {
+  await fs.promises.writeFile(fileName, JSON.stringify(object));
 }
 
-function toObject(tagCounts: Map<string, number>) {
+async function saveCounts(fileName: string, counts: Map<string, number>) {
+  // console.log(toObject(yearCounts));
+  const asObject = toObject(counts);
+
+  await saveObject(fileName, asObject);
+}
+
+function toObject(counts: Map<string, number>) {
   const object: {[id: string]: number} = {};
 
-  tagCounts.forEach((count, key) => {
+  counts.forEach((count, key) => {
     object[key] = count;
   });
 
@@ -136,18 +186,6 @@ function printSubfield(subfields: [SubField], code: string) {
 }
 
 
-function getSubfield(subfields: [SubField], code: string): string {
-  let result = null;
-  for (let i = 0; i < subfields.length; i++) {
-    const subfield = subfields[i];
-    if (code === subfield.$.code) {
-      result = subfield.$text;
-      break;
-    }
-  }
-
-  return result;
-}
 
 export async function printYearCounts() {
   const contents = await fs.promises.readFile(yearCountsPath, 'utf8');
@@ -163,17 +201,4 @@ export async function printYearCounts() {
   asArray.sort(([, countA], [, countB]) => countB - countA);
 
   console.log(asArray);
-}
-
-const numberRegex = /^\d{4}$/
-
-function isFourDigits(yearString: string) {
-  if (yearString.length !== 4) return false;
-
-  return yearString.match(numberRegex);
-}
-
-
-function approximateToMiddleYear(approxYear: string) {
-  return approxYear.replace('-', '5').replace('-', '5');
 }

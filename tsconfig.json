@@ -18,13 +18,15 @@
     "pretty": true,
     "noFallthroughCasesInSwitch": true,
     "allowUnreachableCode": false,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "jsx": "react",
+    "downlevelIteration": true
   },
   "files": [
     "./server/index.ts",
   ],
   "include": [
-    "src/"
+    "src/",
   ],
   "exclude": [
     "node_modules/",

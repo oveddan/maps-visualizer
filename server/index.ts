@@ -1,7 +1,8 @@
-// import * as tagCounts from './tagCounts';
 import * as records from './records';
+import * as tagCounts from './tagCounts';
 
-// tagCounts.printTagCounts();
+tagCounts.printTagCounts();
 
 
-records.parseRecords();
+records.getAndAggregateData();
+// records.getAndSaveDataCounts({getAndSaveScale: true});
