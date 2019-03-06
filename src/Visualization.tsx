@@ -2,10 +2,6 @@ import { Component } from 'react'
 import * as React from 'react'
 import { get } from 'axios';
 
-import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip
-} from 'recharts'
-
 // const aggregate = require('../data/aggregate.json');
 type ResultEntry = {
   category: string,
@@ -88,10 +84,7 @@ export default class Visualization extends Component {
           width={width}
           height={height}
         >
-          <CartesianGrid />
-          <XAxis type="number" dataKey="year" name="year" domain={['dataMin', maxYear]} />
-          <YAxis type="number" dataKey="scale" name="scale" />
-          <g>
+         <g>
             {Object.keys(dataGroupedByCategory).map((category, i)=> (
               <path key={i} d={area(dataGroupedByCategory[category])} fill={color(category)}/>
             ))}
@@ -116,43 +109,8 @@ export default class Visualization extends Component {
 }
 
 
-// function buildByYear(data: [{scale: number, year: string}]): Map<string, [number]> {
-//   const result: Map<string, [number]> = new Map();
-
-//   data.forEach(({ scale, year }) => {
-//     if (!result.has(year)) {
-//       result.set(year, [scale]);
-//     } else {
-
-//     }
-//   })
-
-//   return result;
-// }
-
 // used to filter out outliers
-const maxScale = 30000000;
 const maxYear = 2019;
-
-// function averageByYear(byYear: Map<string, [number]>) {
-//   const result: { year:number, scale:number}[] = [];
-
-//   for (let year of byYear.keys()) {
-//     const scales = byYear.get(year);
-//     const mean = getMean(scales);
-
-//     if (mean > maxScale) continue;
-
-//     if (Number(year) >= maxYear) continue;
-
-//     result.push({
-//       year: Number(year),
-//       scale: mean
-//     });
-//   }
-
-//   return result;
-// }
 
 function getTopXCategories(records: AggregateRecord[], amountToSelect: number): string[] {
   const categoryCounts = new Map<string, number>();
